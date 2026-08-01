@@ -58,6 +58,11 @@ def apply(verdict: Verdict, ctx) -> tuple[Verdict, list[Fired]]:
             code = "IMPERSONATED_BRAND"
         return _finish(verdict, action, mtype, code, ctx, fired)
 
+    # 90 - genuine time pressure always interrupts, whatever the user did with
+    # similar messages before. In the solved samples `urgent` is `notify` 4/4.
+    if mtype == "urgent":
+        action = record("urgent_floor", 90, action, _floor(action, "notify"), "time-critical content")
+
     # 80 - admin floor. Guarded: authority does not extend to money requests.
     admin_ok = (
         f.get("sender_is_admin")

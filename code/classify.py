@@ -227,7 +227,9 @@ def classify_rules(ctx) -> Verdict:
         if f.get("relationship") is None and not s.has("TRUSTED_SENDER"):
             return Verdict("mute", "spam", "UNSOLICITED_BULK", 0.83, ids).note("no relationship")
         if f.get("relationship") is None or opted_out:
-            return Verdict("mute", "promotion", "OPTED_OUT_MARKETING", 0.84, ids).note("opted out")
+            # Preserve the classified type: an opted-out message from an unknown
+            # brand on a shortener is spam, not merely an unwanted promotion.
+            return Verdict("mute", mtype, "OPTED_OUT_MARKETING", 0.84, ids).note("opted out")
 
     if mtype in ("greeting", "forward") and f.get("forwarded", 0) >= 1:
         return Verdict("mute", mtype, "REPEATED_FORWARDS", 0.83, ids).note("viral forward")
