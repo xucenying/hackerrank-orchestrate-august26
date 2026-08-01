@@ -17,6 +17,12 @@ from classify import REASON_TEMPLATES, Verdict
 RANK = {"mute": 0, "digest": 1, "notify": 2}
 UNRANK = {v: k for k, v in RANK.items()}
 
+# Flags that mean the urgency in the text is manufactured rather than real.
+URGENCY_ABUSE_FLAGS = (
+    "PAYMENT_REQUEST", "CREDENTIAL_REQUEST", "PRESSURE", "PRIZE_BAIT",
+    "SHORTENER", "VIRAL_FORWARD", "FORWARDED", "UNKNOWN_BRAND", "YOUNG_DOMAIN",
+)
+
 CONF_MIN, CONF_MAX = 0.78, 0.91
 HIGH_DISMISS = 0.45
 
@@ -58,9 +64,20 @@ def apply(verdict: Verdict, ctx) -> tuple[Verdict, list[Fired]]:
             code = "IMPERSONATED_BRAND"
         return _finish(verdict, action, mtype, code, ctx, fired)
 
-    # 90 - genuine time pressure always interrupts, whatever the user did with
-    # similar messages before. In the solved samples `urgent` is `notify` 4/4.
-    if mtype == "urgent":
+    # 90 - genuine time pressure interrupts. In the solved samples `urgent` is
+    # `notify` 4/4.
+    #
+    # Guarded, because urgency is the scammer's favourite register: "pay today
+    # to avoid account lock", "verify before midnight". An unguarded version of
+    # this rule promoted five phishing messages in messages.csv from mute to
+    # notify - three of which this user had already *reported*. Manufactured
+    # urgency must never outrank a risk flag or the user's own verdict.
+    prior = ctx.evidence.primary
+    urgency_is_trustworthy = (
+        not s.has(*URGENCY_ABUSE_FLAGS)
+        and (prior is None or prior.engagement not in ("reported", "dismissed"))
+    )
+    if mtype == "urgent" and urgency_is_trustworthy:
         action = record("urgent_floor", 90, action, _floor(action, "notify"), "time-critical content")
 
     # 80 - admin floor. Guarded: authority does not extend to money requests.
