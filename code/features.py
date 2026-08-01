@@ -79,7 +79,7 @@ class Context:
             lines.append("citable evidence from THIS user's history:")
             for e in self.evidence.citable:
                 lines.append(
-                    f"  - {e.message_id} [{e.engagement}] via {e.how} (score {e.score}): {e.text}"
+                    f"  - {e.message_id} [{e.engagement}] via {e.how}: {e.text}"
                 )
         else:
             lines.append("citable evidence: none found for this user")

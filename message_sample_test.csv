@@ -1,0 +1,31 @@
+message_id,action,message_type,reason,confidence,evidence_message_ids
+sample_msg_001,notify,urgent,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.89,message_0001;message_0129;message_0141
+sample_msg_002,notify,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.89,message_0002;message_0209;message_0133
+sample_msg_003,notify,urgent,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.89,message_0060;message_0170;message_0003
+sample_msg_004,notify,business_update,A verified business is sending a legitimate but non-urgent order update.,0.91,message_0004;message_0239;message_0105
+sample_msg_005,notify,event,The user has consistently responded to similar appointment reminders from this verified business.,0.91,message_0245;message_0005;message_0246
+sample_msg_006,notify,personal,The sender directly asks this user for a response or action.,0.89,message_0006;message_0250;message_0363
+sample_msg_007,digest,promotion,The message is promotional but matches a topic the user has opted into.,0.82,message_0272;message_0033;message_0007
+sample_msg_008,digest,event,A trusted group admin shared upcoming event details that do not require immediate attention.,0.84,message_0008
+sample_msg_009,digest,greeting,The sender has a pattern of repeated greetings that the user usually ignores.,0.82,message_0009;message_0132
+sample_msg_010,digest,personal,The message is casual group chatter that the user typically reads without acting.,0.80,message_0010;message_0038;message_0316
+sample_msg_011,digest,business_update,A verified business is sending a legitimate but non-urgent update.,0.82,message_0011;message_0242;message_0075
+sample_msg_012,digest,promotion,Similar historical messages were read but not acted on by this user.,0.82,message_0012
+sample_msg_013,mute,greeting,The sender has a pattern of repeated forwards or greetings that the user usually ignores.,0.84,message_0014;message_0123;message_0171
+sample_msg_014,mute,forward,The sender has a pattern of repeated forwards that the user usually dismisses.,0.84,message_0015;message_0016;message_0256
+sample_msg_015,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.84,message_0258;message_0018;message_0017
+sample_msg_019,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.82,message_0023;message_0045;message_0199
+sample_msg_020,mute,scam,The message uses fake support language and account-blocking pressure to push the user into action.,0.87,message_0024;message_0201;message_0087
+sample_msg_041,digest,personal,The sender shares a casual personal note with no urgency or action needed.,0.80,message_0046
+sample_msg_042,notify,urgent,The sender reports a family health emergency and directly asks the user to call now.,0.82,message_0035;message_0047
+sample_msg_043,mute,spam,The sender has no relationship with this user and the message is unsolicited bulk marketing.,0.84,message_0048;message_0357
+sample_msg_044,digest,promotion,"The offer is potentially relevant, but it does not need immediate attention.",0.82,message_0401;message_0113;message_0332
+sample_msg_045,mute,promotion,The user has repeatedly dismissed similar marketplace listing messages.,0.84,message_0115;message_0335;message_0383
+sample_msg_046,notify,event,A trusted group admin shared a scheduled activity notice the user consistently responds to.,0.89,message_0403;message_0051;message_0037
+sample_msg_047,mute,promotion,The user has repeatedly dismissed similar marketing messages from this type of sender.,0.84,message_0402;message_0257;message_0052
+sample_msg_048,digest,business_update,A verified business is sending a legitimate but non-urgent advisory update.,0.82,message_0412;message_0053
+sample_msg_049,digest,unknown,"The sender is unfamiliar, but the message does not show urgency or safety risk.",0.82,none
+sample_msg_050,digest,personal,The sender shares a routine personal update with no urgency or action needed.,0.80,message_0054;message_0225;message_0167
+sample_msg_051,notify,urgent,The sender directly asks this user for immediate help before an escalation deadline.,0.89,message_0362;message_0228;message_0117
+sample_msg_052,mute,scam,The message uses fake support language and account-blocking pressure to push the user into action.,0.87,message_0238;message_0381;message_0321
+sample_msg_053,mute,scam,"The message tries to instruct the router, but the routing decision should be based on the actual content and risk.",0.85,message_0235;message_0056;message_0369

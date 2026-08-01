@@ -24,7 +24,14 @@ CREDENTIAL_RE = re.compile(
     r"\b(otp|one[- ]time (pass|code)|pin\b|cvv|kyc|"
     r"(confirm|share|enter|reply with)[^.]{0,30}\b(password|pin|otp|code|card number)|"
     r"verify (your )?(account|profile|identity|wallet)|"
-    r"account (re[- ]?)?verification|re[- ]?verify|update (your )?kyc)\b",
+    r"account (re[- ]?)?verification|re[- ]?verify|update (your )?kyc|"
+    # Asking for bank or card details is a credential request even when the
+    # words OTP and password never appear. The object has to be specific:
+    # a bare "card" also matches "ID card" and "report card", which is how a
+    # school consent form briefly got classified as phishing.
+    r"(bank|account|card) (details|number)|"
+    r"(fill|share|send|provide)[^.]{0,25}"
+    r"(bank details|account (number|details)|card (number|details)|ifsc|upi id))\b",
     re.I,
 )
 PRESSURE_RE = re.compile(
@@ -36,6 +43,11 @@ PRESSURE_RE = re.compile(
 PRIZE_RE = re.compile(
     r"\b(congrats|congratulations|you(r number)? (have|has|were|was) (been )?(selected|chosen|won)|"
     r"lucky draw|prize|voucher|scratch card|claim (your|the) (reward|prize|gift|cashback))\b",
+    re.I,
+)
+SHORTENER_IN_TEXT_RE = re.compile(
+    r"\b(" + "|".join(s.replace(".", r"\.") for s in SHORTENERS) + r")\b"
+    r"|\b[a-z0-9-]+\.(?:link|click|top|xyz|gq|tk)\b",
     re.I,
 )
 INJECTION_RE = re.compile(
@@ -130,6 +142,13 @@ def evaluate(row: dict, ds, media_text: str = "") -> Safety:
 
         if any(s in used.lower() for s in SHORTENERS):
             out.flags.append("SHORTENER")
+
+    # A shortened or lookalike link is a risk signal wherever it appears. The
+    # domain checks above only inspect business_accounts.csv, so a bit.ly in the
+    # body of a group or personal message was previously invisible.
+    if SHORTENER_IN_TEXT_RE.search(blob):
+        out.flags.append("SUSPICIOUS_LINK")
+        out.notes.append("message body contains a shortened or redirect link")
 
     if CREDENTIAL_RE.search(blob):
         out.flags.append("CREDENTIAL_REQUEST")

@@ -5,7 +5,7 @@ personalised to the receiving user.
 
 ## Setup
 
-Python 3.10+. The default backend is fully offline and needs no API key.
+Python 3.10+. Requires `ANTHROPIC_API_KEY` for retrieval and classification.
 
 ```bash
 python -m venv .venv
@@ -20,16 +20,10 @@ source .venv/Scripts/activate
 python -m pip install -r requirements.txt
 ```
 
-**The baseline needs no dependencies at all.** The `rules` backend is
-stdlib-only and scores 29/30 on the solved samples in an empty virtualenv;
-verify with `python code/main.py --eval` before installing anything. Everything
-in `requirements.txt` unlocks an optional stage:
-
-| Package | Unlocks | Rows affected |
+| Package | What it does | Required? |
 |---|---|---|
-| `anthropic` | `--backend claude`, image OCR | 15 image rows |
-| `pydantic` | structured outputs for the claude backend | - |
-| `faster-whisper` | local voice transcription, no API key | 8 voice rows |
+| `anthropic` | LLM retrieval, classification, image OCR | Yes |
+| `faster-whisper` | local voice transcription, no API key | Optional (8 voice rows) |
 
 `faster-whisper` is heavy (~18 transitive packages, plus a ~145 MB model on
 first run). Skip it and those 8 rows route on metadata alone, with a printed
@@ -68,8 +62,6 @@ python code/main.py --eval             # score against the 30 solved samples
 python code/main.py --dry-run          # preflight report only, no work
 python code/main.py --diff             # compare against output.csv, write nothing
 python code/main.py --accept           # write even when the diff flags CRITICAL
-python code/main.py --backend claude   # LLM classifier (needs ANTHROPIC_API_KEY)
-python code/main.py --offline          # fail rather than touch the network
 ```
 
 ### The regression check
@@ -96,45 +88,34 @@ re-run with `--accept`. `--diff` exits 1 for use as a CI gate.
 
 ## Design
 
-Rules -> model -> rules. Deterministic stages bracket the judgment call on both
-sides, so safety policy is never left to the classifier.
+Rules -> LLM -> rules. Deterministic safety and policy stages bracket the
+LLM judgment call on both sides, so safety is never left to the model.
 
 | Stage | Module | What it does |
 |---|---|---|
 | 0 | `loader.py` | Load 13 CSVs, build lookup tables, validate referential integrity |
 | 1 | `media.py` | Image OCR (Claude vision) and voice transcription (Whisper), cached by content hash |
-| 2 | `features.py` | Assemble one context bundle per message |
-| 3 | `safety.py` | Danger check - impersonation, credential requests, pressure, injection |
-| 4 | `retrieval.py` | Find similar past messages **this same user** received |
-| 5 | `classify.py` | Decide action / type / reason_code / confidence (`rules` or `claude`) |
-| 6 | `policy.py` | Deterministic arbitration with explicit precedence |
-| 7 | `writer.py` | Validate the output contract, then write |
-| 8 | `evaluate.py` | Score against `sample_messages.csv` |
+| 2a | `safety.py` | Danger check - impersonation, credential requests, pressure, injection |
+| 2b | `retrieval.py` | LLM finds the most relevant past messages **this same user** received |
+| 3 | `features.py` | Assemble one context bundle from safety + retrieval results |
+| 4 | `classify.py` | Hybrid: safety rules force scam/spam, LLM decides type + reason, evidence or LLM decides action, confidence from signal count |
+| 5 | `policy.py` | Deterministic arbitration with explicit precedence |
+| 6 | `writer.py` | Validate the output contract, then write |
+| 7 | `evaluate.py` | Score against `sample_messages.csv` |
 
 Key decisions:
 
 - **Evidence is scoped per user.** Every cited ID belongs to the receiving user;
   the writer enforces this. Cross-user matches on the same media file are kept
   as context and never cited.
-- **Retrieval blends content and structure.** Structural joins (same media, same
-  business, same sender) are a bonus on lexical similarity, not an override.
-- **Reasons come from a fixed template table**, selected by an enum `reason_code`,
-  so phrasing stays consistent across all rows.
+- **Retrieval is LLM-based.** Claude picks the most semantically relevant past
+  messages, handling paraphrases and multilingual content that word-overlap
+  methods miss.
+- **Reasons are LLM-generated**, one sentence per message, mirroring the style
+  in `sample_messages.csv`. Safety overrides use fixed reason sentences.
+- **Confidence is derived from signal count and agreement**, not guessed by the
+  LLM. More agreeing signals = higher confidence, conflicting signals = lower.
 - **Safety overrides engagement.** Opening a phishing message is not a request
   for more of them.
 - **Caches are content-addressed**, so editing a CSV row or replacing a media
   file invalidates exactly the affected items and nothing else.
-
-## Results (rules backend, offline)
-
-Measured with `python code/main.py --eval`:
-
-```
-action accuracy ........ 29/30  97%
-message_type accuracy .. 28/30  93%
-both correct ........... 28/30  93%
-evidence same-decision . 26/28  93%
-```
-
-Both remaining misses are voice notes routed without transcription. Install
-`faster-whisper` to close them.

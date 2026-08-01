@@ -10,7 +10,6 @@ import csv
 from pathlib import Path
 
 from classify import ACTIONS, TYPES
-from policy import render_reason
 
 COLUMNS = ["message_id", "action", "message_type", "reason", "confidence", "evidence_message_ids"]
 
@@ -28,7 +27,7 @@ def to_rows(results: list[tuple[str, object]], ds) -> list[dict]:
                 "message_id": message_id,
                 "action": verdict.action,
                 "message_type": verdict.message_type,
-                "reason": render_reason(verdict.reason_code),
+                "reason": verdict.reason,
                 "confidence": f"{verdict.confidence:.2f}",
                 "evidence_message_ids": ";".join(ids) if ids else "none",
             }

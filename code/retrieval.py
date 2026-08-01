@@ -1,42 +1,18 @@
-"""Stage 4 - evidence retrieval, scoped to the receiving user.
+"""Stage 2b - evidence retrieval, scoped to the receiving user.
 
-Every cited evidence ID must belong to the same user as the message being routed
-(verified across all 31 citations in sample_messages.csv). Cross-user matches on
-the same media file are kept separately as context and must never be cited.
+Every cited evidence ID must belong to the same user as the message being routed.
+Cross-user matches on the same media file are kept separately as context and must
+never be cited.
+
+Retrieval is LLM-based: Claude reads the incoming message alongside the user's
+history pool and picks the single most relevant prior message. This gives
+semantic matching ("delivery" ↔ "shipment") that word-overlap methods miss.
 """
 
 from __future__ import annotations
 
-import math
-import re
-from collections import Counter
+import json
 from dataclasses import dataclass, field
-
-STOP = {
-    "the", "a", "an", "and", "or", "but", "if", "is", "are", "was", "were", "be",
-    "to", "of", "in", "on", "at", "for", "with", "as", "by", "from", "this",
-    "that", "it", "its", "will", "can", "you", "your", "we", "our", "us", "i",
-    "not", "no", "so", "do", "does", "has", "have", "had", "please", "pls",
-}
-TOKEN_RE = re.compile(r"[a-z0-9]+")
-
-# Structural agreement is a boost on content similarity, never a replacement.
-# Diagnosing the solved samples showed the gold citation is usually the top
-# lexical match, while a hard tier cascade kept returning same-sender rows about
-# unrelated topics - so the joins are worth roughly a fifth of a similarity
-# point, not an override.
-STRUCTURAL_BONUS = {
-    "same_media": 0.35,
-    "same_business": 0.25,
-    "same_sender_group": 0.20,
-    "same_group": 0.10,
-}
-MIN_SCORE = 0.15
-TOP_K = 1
-
-
-def tokenize(text: str) -> list[str]:
-    return [t for t in TOKEN_RE.findall((text or "").lower()) if t not in STOP and len(t) > 2]
 
 
 @dataclass
@@ -44,7 +20,6 @@ class Evidence:
     message_id: str
     engagement: str
     how: str
-    score: float
     text: str
 
 
@@ -62,34 +37,27 @@ class Retrieved:
         return self.citable[0] if self.citable else None
 
 
-class Index:
-    """Per-user TF-IDF over message_history text. Small corpus, no sklearn needed."""
+RETRIEVAL_SYSTEM = """\
+You are an evidence retrieval assistant. You will receive an incoming WhatsApp \
+message and a list of past messages that the same user received.
 
-    def __init__(self, ds):
-        self.ds = ds
-        self._df: Counter = Counter()
-        self._docs: dict[str, Counter] = {}
-        for row in ds.history:
-            tokens = tokenize(row["message_text"])
-            self._docs[row["message_id"]] = Counter(tokens)
-            self._df.update(set(tokens))
-        self._n = max(len(self._docs), 1)
+Find the past messages that are most relevant to the incoming message. There \
+may be zero, one, or several relevant matches.
 
-    def _idf(self, term: str) -> float:
-        return math.log((self._n + 1) / (self._df.get(term, 0) + 1)) + 1.0
+Respond with ONLY a JSON object:
+{"matches": [{"message_id": "<id>", "how": "<reason>"}, ...]}
 
-    def _vector(self, counts: Counter) -> dict[str, float]:
-        vec = {t: (1 + math.log(c)) * self._idf(t) for t, c in counts.items()}
-        norm = math.sqrt(sum(v * v for v in vec.values())) or 1.0
-        return {t: v / norm for t, v in vec.items()}
+- message_id: the ID of a relevant past message.
+- how: one of "same_media", "same_business", "same_sender", "same_group", "semantic" \
+  — describing WHY this past message is relevant.
+- Return {"matches": []} if no past message is meaningfully related.
 
-    def similarity(self, query_counts: Counter, message_id: str) -> float:
-        q = self._vector(query_counts)
-        d = self._vector(self._docs.get(message_id, Counter()))
-        if not q or not d:
-            return 0.0
-        small, large = (q, d) if len(q) < len(d) else (d, q)
-        return sum(v * large.get(t, 0.0) for t, v in small.items())
+Rules:
+- Only choose from the listed past messages. Never invent an ID.
+- A past message about a completely different topic is NOT relevant, even if it \
+  shares a sender. Prefer topical similarity over structural overlap.
+- Return at most 3 matches. Prefer fewer, stronger matches over many weak ones.
+"""
 
 
 def is_cold_sender(row: dict, ds) -> bool:
@@ -105,37 +73,62 @@ def is_cold_sender(row: dict, ds) -> bool:
     )
 
 
-def retrieve(row: dict, ds, index: Index, media_text: str = "", top_k: int = TOP_K) -> Retrieved:
+def _format_history(pool: list[dict], ds) -> str:
+    lines = []
+    for h in pool:
+        mid = h["message_id"]
+        eng = ds.engagement.get(mid, "unknown")
+        text = (h["message_text"] or "")[:200]
+        bid = h.get("business_id") or ""
+        sender = h.get("sender_user_id") or ""
+        group = h.get("group_id") or ""
+        media = h.get("media_id") or ""
+        parts = [f"id={mid}", f"engagement={eng}"]
+        if bid:
+            parts.append(f"business={bid}")
+        if sender:
+            parts.append(f"sender={sender}")
+        if group:
+            parts.append(f"group={group}")
+        if media:
+            parts.append(f"media={media}")
+        parts.append(f"text={text!r}")
+        lines.append("  ".join(parts))
+    return "\n".join(lines)
+
+
+def _format_incoming(row: dict, media_text: str) -> str:
+    parts = [
+        f"message_id: {row['message_id']}",
+        f"conversation_type: {row['conversation_type']}",
+        f"text: {(row.get('message_text') or '')!r}",
+    ]
+    if row.get("business_id"):
+        parts.append(f"business_id: {row['business_id']}")
+    if row.get("sender_user_id"):
+        parts.append(f"sender_user_id: {row['sender_user_id']}")
+    if row.get("group_id"):
+        parts.append(f"group_id: {row['group_id']}")
+    if row.get("media_id"):
+        parts.append(f"media_id: {row['media_id']}")
+    if media_text:
+        parts.append(f"media_content: {media_text[:300]!r}")
+    return "\n".join(parts)
+
+
+def retrieve(row: dict, ds, client, model: str, cache=None,
+             media_text: str = "") -> Retrieved:
     user = row["user_id"]
     pool = ds.history_by_user.get(user, [])
-    seen: set[str] = set()
     out = Retrieved()
 
-    # A first-ever message from an unknown sender has no relevant history, even
-    # when similar words appear elsewhere. The samples emit `none` here.
     if is_cold_sender(row, ds):
         return out
 
-    def add(hist_row: dict, how: str, score: float) -> None:
-        mid = hist_row["message_id"]
-        if mid in seen:
-            return
-        seen.add(mid)
-        out.citable.append(
-            Evidence(
-                message_id=mid,
-                engagement=ds.engagement.get(mid, "unknown"),
-                how=how,
-                score=score,
-                text=(hist_row["message_text"] or "")[:160],
-            )
-        )
+    if not pool:
+        return out
 
-    query = Counter(tokenize(f"{row.get('message_text', '')} {media_text}"))
     media_id = row.get("media_id") or ""
-    bid = row.get("business_id") or ""
-    sender = row.get("sender_user_id") or ""
-    group = row.get("group_id") or ""
 
     # Same media, different user: usable as background, never citable.
     if media_id:
@@ -146,31 +139,75 @@ def retrieve(row: dict, ds, index: Index, media_text: str = "", top_k: int = TOP
                         message_id=h["message_id"],
                         engagement=ds.engagement.get(h["message_id"], "unknown"),
                         how="same_media_other_user",
-                        score=0.0,
                         text=(h["message_text"] or "")[:160],
                     )
                 )
 
-    # Blended scoring. Structural joins are a *boost* on top of content
-    # similarity, not an override of it - a same-sender match about an unrelated
-    # topic is worse evidence than a different sender saying the same thing.
-    scored: list[tuple[float, str, dict]] = []
-    for h in pool:
-        sim = index.similarity(query, h["message_id"]) if query else 0.0
-        bonus, how = 0.0, "lexical"
-        if media_id and h.get("media_id") == media_id:
-            bonus, how = STRUCTURAL_BONUS["same_media"], "same_media"
-        elif bid and h.get("business_id") == bid:
-            bonus, how = STRUCTURAL_BONUS["same_business"], "same_business"
-        elif sender and group and h.get("sender_user_id") == sender and h.get("group_id") == group:
-            bonus, how = STRUCTURAL_BONUS["same_sender_group"], "same_sender_group"
-        elif group and h.get("group_id") == group:
-            bonus, how = STRUCTURAL_BONUS["same_group"], "same_group"
-        scored.append((sim + bonus, how, h))
+    # Check cache before calling the API.
+    cache_key = f"retrieval:{row['message_id']}"
+    valid_ids = {h["message_id"] for h in pool}
+    pool_by_id = {h["message_id"]: h for h in pool}
 
-    scored.sort(key=lambda p: p[0], reverse=True)
-    for score, how, h in scored:
-        if len(out.citable) >= top_k or score < MIN_SCORE:
+    if cache is not None:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            for match in cached:
+                mid = match["message_id"]
+                if mid in valid_ids:
+                    h = pool_by_id[mid]
+                    out.citable.append(Evidence(
+                        message_id=mid,
+                        engagement=ds.engagement.get(mid, "unknown"),
+                        how=match.get("how", "semantic"),
+                        text=(h["message_text"] or "")[:160],
+                    ))
+            return out
+
+    if client is None:
+        return out
+
+    prompt = (
+        "INCOMING MESSAGE:\n"
+        + _format_incoming(row, media_text)
+        + "\n\nPAST MESSAGES THIS USER RECEIVED:\n"
+        + _format_history(pool, ds)
+    )
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=300,
+        system=[{"type": "text", "text": RETRIEVAL_SYSTEM,
+                 "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    text_out = ""
+    for block in response.content:
+        if hasattr(block, "text"):
+            text_out = block.text.strip()
             break
-        add(h, how, round(score, 3))
+    try:
+        result = json.loads(text_out)
+    except json.JSONDecodeError:
+        result = {"matches": []}
+
+    matches = result.get("matches", [])
+    validated = []
+    for match in matches:
+        mid = match.get("message_id", "")
+        how = match.get("how", "semantic")
+        if mid in valid_ids:
+            validated.append({"message_id": mid, "how": how})
+            h = pool_by_id[mid]
+            out.citable.append(Evidence(
+                message_id=mid,
+                engagement=ds.engagement.get(mid, "unknown"),
+                how=how,
+                text=(h["message_text"] or "")[:160],
+            ))
+
+    if cache is not None:
+        cache.put(cache_key, validated)
+        cache.save()
+
     return out

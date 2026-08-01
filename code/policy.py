@@ -1,4 +1,4 @@
-"""Stage 6 - deterministic policy arbitration.
+"""Stage 5 - deterministic policy arbitration.
 
 Rules carry an explicit precedence number rather than relying on list position,
 so reordering the list for readability cannot silently change behaviour. Every
@@ -12,18 +12,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from classify import REASON_TEMPLATES, Verdict
+from classify import Verdict
 
 RANK = {"mute": 0, "digest": 1, "notify": 2}
 UNRANK = {v: k for k, v in RANK.items()}
 
-# Flags that mean the urgency in the text is manufactured rather than real.
 URGENCY_ABUSE_FLAGS = (
     "PAYMENT_REQUEST", "CREDENTIAL_REQUEST", "PRESSURE", "PRIZE_BAIT",
     "SHORTENER", "VIRAL_FORWARD", "FORWARDED", "UNKNOWN_BRAND", "YOUNG_DOMAIN",
 )
 
-CONF_MIN, CONF_MAX = 0.78, 0.91
 HIGH_DISMISS = 0.45
 
 
@@ -46,7 +44,7 @@ def _floor(action: str, floor: str) -> str:
 def apply(verdict: Verdict, ctx) -> tuple[Verdict, list[Fired]]:
     s, f = ctx.safety, ctx.facts
     fired: list[Fired] = []
-    action, mtype, code = verdict.action, verdict.message_type, verdict.reason_code
+    action, mtype, reason = verdict.action, verdict.message_type, verdict.reason
 
     def record(rule: str, prec: int, before: str, after: str, detail: str) -> str:
         fired.append(Fired(rule, prec, before != after, detail))
@@ -58,20 +56,9 @@ def apply(verdict: Verdict, ctx) -> tuple[Verdict, list[Fired]]:
         new = "mute"
         action = record("hard_override", 100, action, new, override)
         mtype = "scam"
-        if override == "INJECTION":
-            code = "ROUTER_INJECTION"
-        elif code not in ("OTP_PHISHING", "IMPERSONATED_BRAND", "FAKE_SUPPORT"):
-            code = "IMPERSONATED_BRAND"
-        return _finish(verdict, action, mtype, code, ctx, fired)
+        return _finish(verdict, action, mtype, reason, ctx, fired)
 
-    # 90 - genuine time pressure interrupts. In the solved samples `urgent` is
-    # `notify` 4/4.
-    #
-    # Guarded, because urgency is the scammer's favourite register: "pay today
-    # to avoid account lock", "verify before midnight". An unguarded version of
-    # this rule promoted five phishing messages in messages.csv from mute to
-    # notify - three of which this user had already *reported*. Manufactured
-    # urgency must never outrank a risk flag or the user's own verdict.
+    # 90 - genuine time pressure interrupts.
     prior = ctx.evidence.primary
     urgency_is_trustworthy = (
         not s.has(*URGENCY_ABUSE_FLAGS)
@@ -88,20 +75,21 @@ def apply(verdict: Verdict, ctx) -> tuple[Verdict, list[Fired]]:
     )
     if admin_ok:
         action = record("admin_floor", 80, action, _floor(action, "notify"), "admin operational notice")
-        if code in ("NO_SIGNAL", "GROUP_INFORMATIONAL"):
-            code = "ADMIN_OPERATIONAL"
 
     # 60 - opted-out marketing.
     if mtype in ("promotion", "spam") and (
         f.get("opted_out_at") or (f.get("business_id") and not f.get("allows_promotions", True))
     ):
         action = record("opt_out", 60, action, "mute", "user opted out of promotions")
-        if code == "NO_SIGNAL":
-            code = "OPTED_OUT_MARKETING"
 
     # 60 - muted group cap (skipped when the admin floor already fired).
     if f.get("group_muted") and not admin_ok and mtype != "urgent":
         action = record("group_muted", 60, action, _cap(action, "digest"), "receiver muted this group")
+
+    # 55 - cold sender cap. A stranger doesn't earn an interrupt.
+    if f.get("cold_sender") and mtype != "urgent":
+        action = record("cold_sender", 55, action, _cap(action, "digest"),
+                        "first-ever message from this sender")
 
     # 50 - viral forward cap, narrowed to non-admin senders.
     if f.get("forwarded", 0) >= 5 and not f.get("sender_is_admin") and mtype != "urgent":
@@ -121,35 +109,16 @@ def apply(verdict: Verdict, ctx) -> tuple[Verdict, list[Fired]]:
         action = record("fatigue", 20, action, _cap(action, "digest"),
                         f"receiver dismisses {f['dismiss_rate']:.0%}")
 
-    return _finish(verdict, action, mtype, code, ctx, fired)
+    return _finish(verdict, action, mtype, reason, ctx, fired)
 
 
-def _finish(verdict: Verdict, action: str, mtype: str, code: str, ctx, fired) -> tuple[Verdict, list[Fired]]:
-    confidence = _calibrate(verdict.confidence, ctx, fired)
+def _finish(verdict, action, mtype, reason, ctx, fired):
     out = Verdict(
         action=action,
         message_type=mtype,
-        reason_code=code if code in REASON_TEMPLATES else "NO_SIGNAL",
-        confidence=confidence,
+        reason=reason,
+        confidence=verdict.confidence,
         evidence_ids=list(verdict.evidence_ids),
         trace=list(verdict.trace) + [f"{x.rule}({'changed' if x.changed else 'no-op'})" for x in fired],
     )
     return out, fired
-
-
-def _calibrate(raw: float, ctx, fired) -> float:
-    """Squeeze into the band the solved samples occupy, nudged by signal agreement."""
-    conf = raw
-    if ctx.evidence.citable:
-        conf += 0.02
-    if ctx.safety.override:
-        conf += 0.03
-    if not ctx.evidence.citable and not ctx.safety.flags:
-        conf -= 0.03
-    if any(x.changed for x in fired):
-        conf -= 0.01
-    return round(min(max(conf, CONF_MIN), CONF_MAX), 2)
-
-
-def render_reason(code: str) -> str:
-    return REASON_TEMPLATES.get(code, REASON_TEMPLATES["NO_SIGNAL"])
