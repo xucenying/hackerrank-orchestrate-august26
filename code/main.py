@@ -32,6 +32,26 @@ ROOT = Path(__file__).resolve().parent.parent
 DATASET = ROOT / "dataset"
 CACHE_DIR = ROOT / "code" / "cache"
 PROMPT_PATH = ROOT / "code" / "prompts" / "system.md"
+ENV_PATH = ROOT / ".env"
+
+
+def load_env(path: Path = ENV_PATH) -> None:
+    """Read KEY=VALUE lines from .env into the environment.
+
+    A real environment variable always wins, so CI and shell exports override
+    the file. Blank values are skipped so an unfilled template is a no-op.
+    Kept dependency-free on purpose - this is ~15 lines, not a package.
+    """
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("'\"")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
 
 
 def get_client():
@@ -79,6 +99,10 @@ def main() -> int:
     ap.add_argument("--offline", action="store_true", help="fail if anything needs the network")
     args = ap.parse_args()
 
+    load_env()
+    if args.model == "claude-opus-5" and os.environ.get("ANTHROPIC_MODEL"):
+        args.model = os.environ["ANTHROPIC_MODEL"]
+
     ds = Dataset.load(DATASET)
     problems = ds.check()
 
@@ -86,7 +110,13 @@ def main() -> int:
     system_prompt = PROMPT_PATH.read_text(encoding="utf-8") if PROMPT_PATH.exists() else ""
 
     llm_cache = Cache(CACHE_DIR / "llm_cache.json")
-    extractor = Extractor(ds, CACHE_DIR / "media_cache.json", client=client, model=args.model)
+    extractor = Extractor(
+        ds,
+        CACHE_DIR / "media_cache.json",
+        client=client,
+        model=args.model,
+        whisper_model=os.environ.get("WHISPER_MODEL") or "base",
+    )
 
     media_total, media_stale = check_media(ds, extractor.cache, args.model)
     target = ds.samples if args.eval else ds.messages

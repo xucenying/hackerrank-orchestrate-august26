@@ -5,17 +5,44 @@ personalised to the receiving user.
 
 ## Setup
 
+Python 3.10+. The default backend is fully offline and needs no API key.
+
 ```bash
+python -m venv .venv
+
+# macOS / Linux
+source .venv/bin/activate
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+# Windows Git Bash
+source .venv/Scripts/activate
+
 python -m pip install -r requirements.txt
 ```
 
-Python 3.10+. The default backend is fully offline and needs no API key.
+### Configuration
 
-Optional, for the media and LLM stages:
+Secrets are read from the environment. `.env` is loaded automatically at
+startup by `load_env()` in `main.py` (no extra dependency), and a real
+environment variable always wins over the file.
 
 ```bash
-export ANTHROPIC_API_KEY=...        # image OCR + the claude classifier backend
-python -m pip install faster-whisper  # voice-note transcription (local, offline)
+cp .env.sample .env      # then paste your key into .env
+```
+
+| Variable | Needed for | Default |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | `--backend claude`, image OCR | unset - rules backend runs offline |
+| `ANTHROPIC_MODEL` | overriding the model | `claude-opus-5` |
+| `WHISPER_MODEL` | voice-note transcription size | `base` |
+
+`.env` is gitignored and must never be committed. `.env.sample` is the tracked
+template and must never contain a real value.
+
+Optional, for voice notes (local, offline, no key):
+
+```bash
+python -m pip install faster-whisper
 ```
 
 ## Run
