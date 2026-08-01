@@ -280,15 +280,20 @@ def classify_claude(ctx, client, system_prompt: str, model: str = "claude-opus-5
         evidence_ids: list[str] = []
 
     allowed = [e.message_id for e in ctx.evidence.citable]
+    # The system block is byte-identical on every call, so it caches after the
+    # first request. Per-message content goes in the user turn, after the
+    # breakpoint. Effort defaults to high on claude-opus-5; passing
+    # output_config alongside output_format would conflict.
     response = client.messages.parse(
         model=model,
         max_tokens=2000,
-        output_config={"effort": "high"},
         system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": ctx.render()}],
         output_format=Routing,
     )
     parsed = response.parsed_output
+    if parsed is None:
+        return classify_rules(ctx).note("claude returned no parse; fell back to rules")
     action = parsed.action if parsed.action in ACTIONS else "digest"
     mtype = parsed.message_type if parsed.message_type in TYPES else "unknown"
     code = parsed.reason_code if parsed.reason_code in REASON_TEMPLATES else "NO_SIGNAL"
