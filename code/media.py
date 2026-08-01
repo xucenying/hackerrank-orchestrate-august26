@@ -27,7 +27,29 @@ asks_for_payment: yes|no
 asks_for_credentials: yes|no
 urgency_language: yes|no"""
 
-MEDIA_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+# File extensions lie in this dataset: 10 of the 20 .jpg files are actually PNG,
+# WebP or AVIF, and the API rejects a mismatched media_type. Sniff the bytes.
+MAGIC = (
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+)
+SUPPORTED = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+AUDIO_SUFFIXES = {".mp3", ".wav", ".m4a", ".ogg", ".flac"}
+
+
+def detect_media_type(path: Path) -> str | None:
+    """Real image type from magic bytes. None means 'not an image we can send'."""
+    head = path.read_bytes()[:16]
+    for sig, mime in MAGIC:
+        if head.startswith(sig):
+            return mime
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "image/webp"
+    if head[4:8] == b"ftyp":  # AVIF / HEIC - not accepted by the vision API
+        return "image/avif"
+    return None
 
 
 class Extractor:
@@ -40,6 +62,7 @@ class Extractor:
         self.whisper_model = whisper_model
         self._whisper = None
         self.unavailable: list[str] = []
+        self.skipped: list[str] = []
 
     # ------------------------------------------------------------------ api
 
@@ -54,15 +77,18 @@ class Extractor:
         if hit is not None:
             return hit.get("text", "")
 
-        if path.suffix.lower() in MEDIA_TYPES:
-            text = self._ocr(path)
-        else:
+        if path.suffix.lower() in AUDIO_SUFFIXES:
             text = self._transcribe(path)
+        else:
+            text = self._ocr(path)
 
         if text is None:
             self.unavailable.append(media_id)
             return ""
         self.cache.put(key, {"media_id": media_id, "text": text})
+        # Persist immediately. Each entry cost an API call or a minute of CPU;
+        # a later crash must not throw away work already paid for.
+        self.cache.save()
         return text
 
     def save(self) -> None:
@@ -73,17 +99,22 @@ class Extractor:
     def _ocr(self, path: Path) -> str | None:
         if self.client is None:
             return None
+        media_type = detect_media_type(path)
+        if media_type not in SUPPORTED:
+            # AVIF/HEIC or an unrecognised container: the vision API would 400.
+            # Report it rather than crash the run mid-way.
+            self.skipped.append(f"{path.name} ({media_type or 'unknown format'})")
+            return None
         data = base64.standard_b64encode(path.read_bytes()).decode("ascii")
         resp = self.client.messages.create(
             model=self.model,
             max_tokens=1500,
-            output_config={"effort": "medium"},
             messages=[{
                 "role": "user",
                 "content": [
                     {"type": "image", "source": {
                         "type": "base64",
-                        "media_type": MEDIA_TYPES[path.suffix.lower()],
+                        "media_type": media_type,
                         "data": data,
                     }},
                     {"type": "text", "text": VISION_PROMPT},

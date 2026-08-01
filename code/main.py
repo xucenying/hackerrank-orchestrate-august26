@@ -81,6 +81,7 @@ def run(rows, ds, extractor, backend, client, system_prompt, llm_cache, model):
             else:
                 verdict = classify.classify_claude(ctx, client, system_prompt, model)
                 llm_cache.put(key, verdict.__dict__)
+                llm_cache.save()  # each entry is a paid call - persist immediately
         else:
             verdict = classify.classify_rules(ctx)
 
@@ -146,9 +147,12 @@ def main() -> int:
         print("STOP: --backend claude needs ANTHROPIC_API_KEY.", file=sys.stderr)
         return 4
 
-    results = run(target, ds, extractor, args.backend, client, system_prompt, llm_cache, args.model)
-    extractor.save()
-    llm_cache.save()
+    try:
+        results = run(target, ds, extractor, args.backend, client, system_prompt, llm_cache, args.model)
+    finally:
+        # A crash must never discard work already paid for.
+        extractor.save()
+        llm_cache.save()
 
     if extractor.unavailable:
         missing = sorted(set(extractor.unavailable))
