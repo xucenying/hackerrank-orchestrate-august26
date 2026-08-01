@@ -27,7 +27,7 @@ msg_038,mute,urgent,"Similar historical messages were ignored, dismissed, or mut
 msg_086,notify,business_update,"The message relates to an active order, booking, or payment the user is expecting.",0.88,message_0222
 msg_014,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.86,message_0258
 msg_094,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.86,message_0356
-msg_029,mute,forward,The sender has a pattern of repeated forwards or greetings that the user usually ignores.,0.85,message_0113
+msg_029,mute,forward,The sender has a pattern of repeated forwards or greetings that the user usually ignores.,0.85,message_0401
 msg_105,mute,personal,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0373
 msg_002,notify,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.88,message_0003
 msg_010,digest,business_update,The verified business message is legitimate but does not require immediate attention.,0.84,message_0011
@@ -41,11 +41,11 @@ msg_006,notify,event,A trusted group admin sent a time-sensitive update that sho
 msg_109,mute,payment,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0151
 msg_108,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.91,message_0094
 msg_019,mute,scam,The sender imitates a known brand from an unverified account on a lookalike domain.,0.91,message_0277
-msg_088,mute,promotion,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0050
+msg_088,mute,promotion,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0224
 msg_056,digest,event,A close contact sent a short urgent request that should interrupt the user.,0.87,message_0168
 msg_027,digest,promotion,The message matches the user's known interests but is still low priority.,0.84,message_0272
 msg_050,notify,event,A close contact sent a short urgent request that should interrupt the user.,0.88,message_0279
-msg_083,notify,event,"The sender is trusted, but the message has no urgent action or safety relevance.",0.83,message_0219
+msg_083,digest,event,"The sender is trusted, but the message has no urgent action or safety relevance.",0.83,message_0219
 msg_063,mute,urgent,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0182
 msg_033,digest,greeting,"The sender is trusted, but the message has no urgent action or safety relevance.",0.84,message_0121
 msg_061,mute,greeting,The sender has a pattern of repeated forwards or greetings that the user usually ignores.,0.85,message_0042
@@ -57,10 +57,10 @@ msg_047,notify,event,A trusted group admin sent a time-sensitive update that sho
 msg_046,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.88,message_0148
 msg_042,notify,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.88,message_0140
 msg_079,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.88,message_0369
-msg_098,notify,personal,A close contact sent a short urgent request that should interrupt the user.,0.88,message_0168
+msg_098,notify,urgent,A close contact sent a short urgent request that should interrupt the user.,0.88,message_0168
 msg_037,notify,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.88,message_0001
 msg_007,digest,event,"The sender is trusted, but the message has no urgent action or safety relevance.",0.83,message_0070
-msg_085,mute,scam,The sender imitates a known brand from an unverified account on a lookalike domain.,0.91,message_0221
+msg_085,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.91,message_0221
 msg_001,notify,urgent,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.88,message_0057
 msg_021,notify,payment,"The message relates to an active order, booking, or payment the user is expecting.",0.88,message_0029
 msg_028,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.86,message_0034
@@ -107,5 +107,5 @@ msg_043,notify,urgent,A trusted group admin sent a time-sensitive update that sh
 msg_077,digest,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.87,message_0403
 msg_081,notify,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.88,message_0217
 msg_025,notify,business_update,"The message relates to an active order, booking, or payment the user is expecting.",0.88,message_0239
-msg_084,mute,business_update,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0220
+msg_084,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.86,message_0220
 msg_022,mute,payment,"Similar historical messages were ignored, dismissed, or muted by this user.",0.86,message_0099

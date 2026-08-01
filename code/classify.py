@@ -68,11 +68,19 @@ URGENT_RE = re.compile(
     r"alert threshold|come online now)\b"
     r"|leav\w+[^.]{0,25}(early|\d{1,2}\s*min)"
     r"|\d{1,2}\s*min(ute)?s?\b[^.]{0,25}\b(max|left|only|before|then)\b"
-    r"|\b(starts?|begins?) in \d{1,2}\s*min",
+    r"|\b(starts?|begins?) in \d{1,2}\s*min"
+    # An explicit immediate request, or a health emergency.
+    r"|\bcall (me |us )?now\b"
+    r"|\b(is |feeling )?unwell\b|\btaken to (the|a) (hospital|clinic)\b",
     re.I,
 )
-# "Nothing urgent" is not urgent.
-NEGATED_URGENT_RE = re.compile(r"\b(nothing|not|no|isn'?t|non)[- ]?\s*urgent\b", re.I)
+# "Nothing urgent" is not urgent, and neither is "don't call now" - which is
+# the same four words as the urgent form, inverted.
+NEGATED_URGENT_RE = re.compile(
+    r"\b(nothing|not|no|isn'?t|non)[- ]?\s*urgent\b"
+    r"|\b(don'?t|dont|do not|no need to) call (me |us )?now\b",
+    re.I,
+)
 
 # The sender has explicitly said this can wait. Trust them over any other signal.
 DEFERRABLE_RE = re.compile(
