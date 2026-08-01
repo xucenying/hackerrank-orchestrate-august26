@@ -66,9 +66,33 @@ python -m pip install faster-whisper
 python code/main.py                    # write output.csv
 python code/main.py --eval             # score against the 30 solved samples
 python code/main.py --dry-run          # preflight report only, no work
+python code/main.py --diff             # compare against output.csv, write nothing
+python code/main.py --accept           # write even when the diff flags CRITICAL
 python code/main.py --backend claude   # LLM classifier (needs ANTHROPIC_API_KEY)
 python code/main.py --offline          # fail rather than touch the network
 ```
+
+### The regression check
+
+The 30 solved samples are the only rows with a known answer, so every accuracy
+number in this repo is blind to the other 110. That gap is not theoretical: an
+unguarded `urgent_floor` rule once scored a clean 30/30 while promoting five
+phishing messages from `mute` to `notify` - three of which the receiving user
+had already *reported*.
+
+`regression.py` runs automatically before every write. It never asks whether a
+prediction is correct - there is no answer key for the 110 - only whether
+anything alarming moved:
+
+| transition | severity | effect |
+|---|---|---|
+| `mute` -> `notify` | **CRITICAL** | a suppressed message now interrupts |
+| `notify` -> `mute` | **CRITICAL** | an interrupting message is now silenced |
+| `notify` <-> `digest`, `digest` <-> `mute` | warn | timing only |
+| type / reason / confidence | info | action unchanged |
+
+A CRITICAL move **refuses the write** (exit 5) until you review the rows and
+re-run with `--accept`. `--diff` exits 1 for use as a CI gate.
 
 ## Design
 

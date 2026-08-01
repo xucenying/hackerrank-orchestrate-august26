@@ -21,6 +21,7 @@ import classify  # noqa: E402
 import evaluate  # noqa: E402
 import features  # noqa: E402
 import policy  # noqa: E402
+import regression  # noqa: E402
 import retrieval  # noqa: E402
 import safety  # noqa: E402
 import writer  # noqa: E402
@@ -98,6 +99,10 @@ def main() -> int:
     ap.add_argument("--model", default="claude-opus-5")
     ap.add_argument("--out", default=str(ROOT / "output.csv"))
     ap.add_argument("--offline", action="store_true", help="fail if anything needs the network")
+    ap.add_argument("--diff", action="store_true",
+                    help="compare against the committed output.csv without writing")
+    ap.add_argument("--accept", action="store_true",
+                    help="write the new output.csv even when the diff flags CRITICAL moves")
     args = ap.parse_args()
 
     load_env()
@@ -166,6 +171,21 @@ def main() -> int:
 
     rows = writer.to_rows(results, ds)
     writer.validate(rows, ds, expect_order=ds.output_order or None)
+
+    # The sample eval only ever sees 30 rows. This is the only check that looks
+    # at all 110, and the only one that can catch a change moving messages
+    # across the mute/notify boundary.
+    diff = regression.compare(rows, args.out, ds, results)
+    print(diff.render())
+    print()
+
+    if args.diff:
+        return 0 if diff.ok else 1
+    if not diff.ok and not args.accept:
+        print("STOP: changes crossed the mute/notify boundary. Review the rows "
+              "above, then re-run with --accept to write anyway.", file=sys.stderr)
+        return 5
+
     path = writer.write(rows, args.out)
     print(f"wrote {len(rows)} rows -> {path}")
     return 0
