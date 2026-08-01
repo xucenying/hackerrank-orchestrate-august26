@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
+
+# LLM responses are regenerable and model-version specific; the media cache is
+# tracked so an offline run can reproduce OCR/ASR without an API key.
+code/cache/llm_cache.json
