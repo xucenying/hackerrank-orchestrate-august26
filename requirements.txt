@@ -1,0 +1,15 @@
+# The default offline `rules` backend needs NOTHING in this file - it is
+# stdlib-only and scores 29/30 on the solved samples in an empty venv.
+# Every package below unlocks an optional stage, and the pipeline degrades
+# gracefully (printing a NOTE) when one is absent.
+
+# --backend claude, and image OCR for the 15 image-bearing rows
+anthropic>=0.116.0
+
+# structured outputs for --backend claude
+pydantic>=2.0
+
+# local voice-note transcription for the 8 voice rows; needs no API key.
+# Heavy: ~18 transitive packages (onnxruntime, ctranslate2, av, tokenizers)
+# plus a ~145 MB model downloaded on first run.
+faster-whisper>=1.0
