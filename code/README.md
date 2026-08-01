@@ -20,6 +20,21 @@ source .venv/Scripts/activate
 python -m pip install -r requirements.txt
 ```
 
+**The baseline needs no dependencies at all.** The `rules` backend is
+stdlib-only and scores 29/30 on the solved samples in an empty virtualenv;
+verify with `python code/main.py --eval` before installing anything. Everything
+in `requirements.txt` unlocks an optional stage:
+
+| Package | Unlocks | Rows affected |
+|---|---|---|
+| `anthropic` | `--backend claude`, image OCR | 15 image rows |
+| `pydantic` | structured outputs for the claude backend | - |
+| `faster-whisper` | local voice transcription, no API key | 8 voice rows |
+
+`faster-whisper` is heavy (~18 transitive packages, plus a ~145 MB model on
+first run). Skip it and those 8 rows route on metadata alone, with a printed
+NOTE rather than a silent degradation.
+
 ### Configuration
 
 Secrets are read from the environment. `.env` is loaded automatically at
