@@ -62,6 +62,10 @@ python code/main.py --eval             # score against the 30 solved samples
 python code/main.py --dry-run          # preflight report only, no work
 ```
 
+`--eval` runs the full pipeline on the 30 gold rows in `sample_messages.csv`
+and reports action accuracy, type accuracy, confidence MAE, evidence overlap,
+and a confusion matrix. It writes `message_sample_test.csv` for inspection.
+
 ## Design
 
 Rules -> LLM -> rules. Deterministic safety and policy stages bracket the
