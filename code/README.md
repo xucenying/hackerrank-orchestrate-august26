@@ -41,7 +41,7 @@ cp .env.sample .env      # then paste your key into .env
 
 | Variable | Needed for | Default |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | `--backend claude`, image OCR | unset - rules backend runs offline |
+| `ANTHROPIC_API_KEY` | retrieval, classification, image OCR | required |
 | `ANTHROPIC_MODEL` | overriding the model | `claude-opus-5` |
 | `WHISPER_MODEL` | voice-note transcription size | `base` |
 
@@ -74,7 +74,7 @@ LLM judgment call on both sides, so safety is never left to the model.
 | 2a | `safety.py` | Danger check - impersonation, credential requests, pressure, injection |
 | 2b | `retrieval.py` | LLM finds the most relevant past messages **this same user** received |
 | 3 | `features.py` | Assemble one context bundle from safety + retrieval results |
-| 4 | `classify.py` | Hybrid: safety rules force scam/spam, LLM decides type + reason, evidence or LLM decides action, confidence from signal count |
+| 4 | `classify.py` | Hybrid: safety rules force scam/spam, LLM decides type + reason, evidence or LLM decides action, confidence from engagement tier |
 | 5 | `policy.py` | Deterministic arbitration with explicit precedence |
 | 6 | `writer.py` | Validate the output contract, then write |
 | 7 | `evaluate.py` | Score against `sample_messages.csv` |
@@ -89,8 +89,9 @@ Key decisions:
   methods miss.
 - **Reasons are LLM-generated**, one sentence per message, mirroring the style
   in `sample_messages.csv`. Safety overrides use fixed reason sentences.
-- **Confidence is derived from signal count and agreement**, not guessed by the
-  LLM. More agreeing signals = higher confidence, conflicting signals = lower.
+- **Confidence is engagement-tier based**, not guessed by the LLM. Base 0.82,
+  adjusted by evidence engagement (replied/reported +0.05, dismissed +0.01),
+  action decisiveness, trusted-sender status, and safety signals. Clamped 0.78-0.91.
 - **Safety overrides engagement.** Opening a phishing message is not a request
   for more of them.
 - **Caches are content-addressed**, so editing a CSV row or replacing a media

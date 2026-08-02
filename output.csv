@@ -14,17 +14,17 @@ msg_003,notify,business_update,A verified business is sending a legitimate but n
 msg_099,digest,personal,The sender shares non-blocking work notes that can be reviewed later.,0.80,message_0227;message_0249;message_0118
 msg_008,digest,business_update,A verified business is sending a legitimate but non-urgent update.,0.82,message_0296;message_0072;message_0071
 msg_092,digest,business_update,A verified business is sending a legitimate but non-urgent update.,0.82,none
-msg_060,notify,unknown,The message was classified based on its content and context.,0.89,message_0404;message_0284;message_0176
+msg_060,notify,urgent,A trusted group admin sent a same-day deadline reminder the user usually acts on.,0.89,message_0404;message_0284;message_0176
 msg_004,notify,event,The user has consistently responded to similar appointment-related updates from this verified business.,0.91,message_0245;message_0005;message_0246
 msg_030,mute,promotion,The user has repeatedly dismissed similar marketplace listings in this muted group.,0.84,message_0115;message_0335;message_0383
 msg_045,notify,urgent,The sender needs a confirmation within a short window before leaving.,0.89,message_0061;message_0146;message_0031
 msg_052,mute,scam,The sender imitates a known brand from an unverified account on a lookalike domain.,0.90,message_0207;message_0159;message_0208
 msg_009,digest,personal,The user muted this group and typically ignores similar casual social chatter.,0.80,message_0074;message_0073
-msg_071,digest,unknown,The message was classified based on its content and context.,0.82,message_0198;message_0197
+msg_071,digest,personal,The sender shares a tentative plan with no confirmed time or immediate action needed.,0.80,message_0198;message_0197
 msg_016,mute,scam,The sender is using credential-phishing pressure that this user has reported before.,0.87,message_0024;message_0201;message_0147
 msg_065,digest,promotion,"The offer is potentially relevant, but it does not need immediate attention.",0.82,message_0261;message_0260;message_0186
 msg_038,mute,forward,The sender has a pattern of repeated forwards that the user usually dismisses.,0.84,message_0131;message_0132
-msg_086,notify,unknown,The message was classified based on its content and context.,0.89,message_0222
+msg_086,notify,event,A verified business changed a scheduled booking time the user has responded to before.,0.89,message_0222
 msg_014,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.84,message_0258;message_0018;message_0017
 msg_094,mute,promotion,The user has previously dismissed similar promotional offers from unfamiliar businesses.,0.83,message_0356
 msg_029,digest,promotion,The message is a marketplace listing that is potentially relevant but not urgent.,0.82,message_0401;message_0113;message_0332
@@ -36,14 +36,14 @@ msg_013,mute,promotion,The sender is posting a personal sale item that is unrela
 msg_018,mute,scam,The sender is using prize bait that the user has reported before.,0.87,message_0026;message_0091;message_0092
 msg_044,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.87,message_0143;message_0144;message_0036
 msg_032,digest,personal,"The message is useful group information, but it is not urgent enough to interrupt the user.",0.80,message_0119;message_0285;message_0374
-msg_106,notify,unknown,The message was classified based on its content and context.,0.89,message_0376;message_0234;message_0293
+msg_106,notify,event,The message is a same-day schedule change the user has responded to before.,0.89,message_0376;message_0234;message_0293
 msg_006,notify,payment,A trusted group admin sent a payment deadline notice this user has previously acted on.,0.89,message_0029;message_0044;message_0097
 msg_109,mute,scam,The sender uses payment pressure and injected instructions that this user previously reported.,0.87,message_0151;message_0237;message_0152
 msg_108,mute,scam,The message asks for urgent OTP or account verification through a suspicious flow.,0.90,message_0094;message_0093;message_0236
 msg_019,mute,scam,The sender imitates a known brand from an unverified account on a lookalike domain.,0.90,message_0277;message_0094;message_0093
 msg_088,mute,promotion,"Similar historical messages were ignored, dismissed, or muted by this user.",0.84,message_0224;message_0050;message_0232
 msg_056,notify,urgent,The sender directly asks this user to confirm a time-sensitive schedule change.,0.89,message_0168;message_0359;message_0226
-msg_027,digest,unknown,The message was classified based on its content and context.,0.82,message_0272;message_0033;message_0007
+msg_027,digest,promotion,The message is promotional but matches a travel interest the user has opted into.,0.82,message_0272;message_0033;message_0007
 msg_050,notify,event,The user has previously replied to similar scheduled healthcare reminders from this business.,0.89,message_0279;message_0155;message_0278
 msg_083,digest,personal,"The sender requests a review, but there is no immediate deadline or urgency.",0.80,message_0219
 msg_063,mute,scam,The sender is using payment pressure typical of scams the user previously reported.,0.87,message_0181;message_0182;message_0365
@@ -99,13 +99,13 @@ msg_095,mute,scam,"The message tries to instruct the router, but the routing dec
 msg_074,mute,promotion,The user has previously reported similar property solicitations from this group.,0.87,message_0203;message_0204;message_0389
 msg_073,mute,scam,The message is a deceptive verification request that the user has reported before.,0.87,message_0024;message_0201;message_0087
 msg_054,mute,scam,The sender is pushing an advance-fee payment scheme the user has repeatedly reported.,0.87,message_0163;message_0357;message_0389
-msg_068,digest,unknown,The message was classified based on its content and context.,0.82,message_0191;message_0192
+msg_068,digest,personal,The message is casual group planning with no urgency or required response.,0.80,message_0191;message_0192
 msg_100,notify,urgent,The sender directly asks this user for immediate action before an escalation deadline.,0.89,message_0362;message_0228;message_0117
 msg_062,digest,event,A trusted group admin shared a scheduled notice that can wait until morning.,0.89,message_0043;message_0410;message_0216
 msg_096,notify,urgent,The message reports a recovered personal document with a same-day collection deadline.,0.84,none
 msg_043,notify,urgent,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.89,message_0001;message_0269;message_0141
 msg_077,digest,event,A trusted group admin sent a time-sensitive update that should interrupt the user.,0.89,message_0403;message_0051;message_0037
-msg_081,notify,unknown,The message was classified based on its content and context.,0.89,message_0217;message_0058;message_0140
+msg_081,notify,event,A trusted group admin sent a same-day schedule change the user usually responds to.,0.89,message_0217;message_0058;message_0140
 msg_025,notify,business_update,A verified business is sending a legitimate but non-urgent update.,0.91,message_0239;message_0004;message_0105
 msg_084,mute,promotion,The user has opted out of or repeatedly dismissed similar marketing messages.,0.84,message_0220;message_0048;message_0356
 msg_022,mute,scam,The sender pushes an unofficial payment link that this user previously dismissed or reported.,0.84,message_0099;message_0151;message_0100
