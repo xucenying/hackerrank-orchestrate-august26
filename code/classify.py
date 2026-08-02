@@ -256,8 +256,10 @@ def classify(ctx, client, model: str, cache=None) -> Verdict:
             if hasattr(block, "text"):
                 text_out = block.text.strip()
                 break
+        cleaned = re.sub(r"^```(?:json)?\s*", "", text_out)
+        cleaned = re.sub(r"\s*```$", "", cleaned).strip()
         try:
-            llm_result = json.loads(text_out)
+            llm_result = json.loads(cleaned)
         except json.JSONDecodeError:
             llm_result = None
 
